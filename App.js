@@ -1,34 +1,62 @@
 // import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { createStackNavigator } from "@react-navigation/native-stack";
-import { useEffect } from "react";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import React, { useEffect } from "react";
 // import Database from "./Database";
-import DetailScreen from "./screens/DetailScreen";
-import AddScreen from "../comp1786-react-native-basics/screen/AddScreen";
-import HomeScreen from "../comp1786-react-native-basics/screen/HomeScreen";
-import SearchScreen from "./screens/SearchScreen";
-import EditScreen from "./screens/EditScreen";
-
+import { StyleSheet } from "react-native";
+import DetailScreen from "../App_Androi/screen/DetailScreen.js";
+import AddScreen from "../App_Androi/screen/AddScreen.js";
+import HomeScreen from "../App_Androi/screen/HomeScreen.js";
+import { NavigationContainer } from "@react-navigation/native";
+import Database from "../App_Androi/Database.js";
+import EditScreen from "../App_Androi/screen/EditScreen.js";
+import SearchScreen from "../App_Androi/screen/SearchScreen.js";
+import { MaterialIcons } from "@expo/vector-icons";
 const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
 const HomeNavigation = () => (
-  <Tab.Navigator>
-    <Tab.Screen name='Home' component={HomeScreen} />
-    {/* <Tab.Screen name="Add Hike" component={EntryScreen} /> */}
-    <Tab.Screen name='Search' component={SearchScreen} />
+  <Tab.Navigator
+    screenOptions={{
+      headerShown: true,
+      tabBarActiveTintColor: "#007AFF",
+    }}>
+    <Tab.Screen
+      name='Home'
+      component={HomeScreen}
+      style={styles.names}
+      options={{
+        name: "Home",
+        tabBarIcon: ({ color, size }) => (
+          <MaterialIcons name='home' color={color} size={size} />
+        ),
+      }}></Tab.Screen>
+
+    <Tab.Screen
+      name='SEARCH'
+      component={SearchScreen}
+      options={{
+        name: "Search",
+        tabBarIcon: ({ color, size }) => (
+          <MaterialIcons name='search' color={color} size={size} />
+        ),
+      }}
+    />
   </Tab.Navigator>
 );
 
 const App = () => {
-  // TODO: Implement Bottom Tab navigation
   useEffect(() => {
-    Database.initDatabase();
+    const initDB = async () => {
+      const datas = await Database.initDatabase(); // đảm bảo DB sẵn sàng
+      console.log("check data", datas);
+    };
+    initDB();
   }, []);
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName='Home'>
+      <Stack.Navigator initialRouteName='Back'>
         <Stack.Screen
           name='Back'
           component={HomeNavigation}
@@ -44,3 +72,9 @@ const App = () => {
 };
 
 export default App;
+const styles = StyleSheet.create({
+  names: {
+    fontSize: 24,
+    color: "#000",
+  },
+});

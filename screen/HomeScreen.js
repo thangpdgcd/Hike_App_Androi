@@ -1,174 +1,221 @@
 import { useIsFocused } from "@react-navigation/native";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useEffect, useState, useRef } from "react";
+import { MaterialIcons } from "@expo/vector-icons";
 import {
   FlatList,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
   Alert,
+  Modal,
+  Animated,
+  Easing,
+  Pressable,
+  Dimensions,
 } from "react-native";
-import Database from "../Database";
+import styles from "../styles/homestyles.js";
+import Database from "../Database.js";
 
 const HomeScreen = ({ navigation }) => {
   const [hikeApp, setHikes] = useState([]);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [expandedHikeId, setExpandedHikeId] = useState(null);
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
   const isFocused = useIsFocused();
+
+  const screenWidth = Dimensions.get("window").width;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: "Home",
+      headerLeft: () => (
+        <TouchableOpacity style={{ marginLeft: 16 }} onPress={toggleMenu}>
+          <MaterialIcons name='menu' size={26} color='#000' />
+        </TouchableOpacity>
+      ),
+      headerRight: () => (
+        <TouchableOpacity
+          style={{ marginRight: 16 }}
+          onPress={() => navigation.navigate("Add Hike")}>
+          <MaterialIcons name='add' size={26} color='#000' />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const data = await Database.getHike();
-        console.log("Received data:", data);
         setHikes(data);
       } catch (error) {
         console.log("Error fetching hikeApp", error);
       }
     };
-
     fetchData();
   }, [isFocused]);
+
+  const toggleMenu = () => {
+    if (menuVisible) {
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 0.9,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setMenuVisible(false));
+    } else {
+      setMenuVisible(true);
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 5,
+          tension: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  };
 
   const handleDeleteHike = async (id) => {
     Alert.alert(
       "Confirm Delete",
       "Are you sure you want to delete this hike?",
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "OK",
           onPress: async () => {
-            // Proceed with the deletion if the user confirms
             await Database.deleteHike(id);
             const data = await Database.getHike();
             setHikes(data);
           },
         },
-      ],
-      { cancelable: false }
-    );
-  };
-  const handleDeleteAllHike = async () => {
-    Alert.alert(
-      "Confirm Delete All",
-      "Are you sure you want to delete all hikes?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "OK",
-          onPress: async () => {
-            // Proceed with the deletion if the user confirms
-            await Database.deleteAllHike();
-            const data = await Database.getHike();
-            setHikes(data);
-          },
-        },
-      ],
-      { cancelable: false }
+      ]
     );
   };
 
-  const renderHikeItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.todoItem}
-      onPress={() => navigation.navigate("Detail", { todo: item })}>
-      <Text>{item.name}</Text>
-      <Text>{item.location}</Text>
-      <Text>{item.date}</Text>
+  const renderHikeItem = ({ item }) => {
+    const isExpanded = expandedHikeId === item.id;
+
+    return (
       <TouchableOpacity
-        style={styles.editButton}
-        onPress={() => navigation.navigate("Edit", { todo: item })}>
-        <Text style={styles.editButtonText}>More</Text>
+        activeOpacity={0.9}
+        style={styles.card}
+        onPress={() => setExpandedHikeId(isExpanded ? null : item.id)}>
+        <View style={styles.infoContainer}>
+          <Text style={styles.title}>{item.name}</Text>
+          <Text style={styles.label}>
+            <Text style={styles.bold}>Location:</Text> {item.location}
+          </Text>
+          <Text style={styles.label}>
+            <Text style={styles.bold}>Date:</Text> {item.date}
+          </Text>
+          <Text style={styles.label}>
+            <Text style={styles.bold}>Parking:</Text> {item.parking}
+          </Text>
+
+          <Text style={styles.label}>
+            <Text style={styles.bold}>Length:</Text> {item.length}
+          </Text>
+          <Text style={styles.label}>
+            <Text style={styles.bold}>Level:</Text> {item.level}
+          </Text>
+          <Text style={styles.label}>
+            <Text style={styles.bold}>Description:</Text> {item.description}
+          </Text>
+
+          <View style={styles.actionContainer}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Detail", { todo: item })}
+              style={[styles.actionButton, { backgroundColor: "#27ae60" }]}>
+              <MaterialIcons name='book' size={20} color='#fff' />
+              <Text style={styles.actionText}>View Detail</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: "#e74c3c" }]}
+              onPress={() => handleDeleteHike(item.id)}>
+              <MaterialIcons name='delete' size={20} color='#fff' />
+              <Text style={styles.actionText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteHike(item.id)}>
-        <Text style={styles.deleteButtonText}>Delete</Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={hikeApp}
-        renderItem={renderHikeItem}
-        keyExtractor={(item) => item.id.toString()}
-      />
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => navigation.navigate("Add Hike")}>
-        <Text style={styles.addButtonText}>Add Hike</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.deleteAllButton}
-        onPress={handleDeleteAllHike}>
-        <Text style={styles.deleteAllButtonText}>Delete All</Text>
-      </TouchableOpacity>
+      {hikeApp.length > 0 ? (
+        <FlatList
+          data={hikeApp}
+          renderItem={renderHikeItem}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No hikes available</Text>
+        </View>
+      )}
+
+      {/* Menu ngay dưới icon 3 gạch */}
+      <Modal transparent visible={menuVisible} animationType='none'>
+        <Pressable style={styles.overlay} onPressOut={toggleMenu}>
+          <Animated.View
+            style={[
+              styles.dropdown,
+              {
+                opacity: opacityAnim,
+                transform: [{ scale: scaleAnim }],
+                position: "absolute",
+                top: 55,
+                left: 15,
+              },
+            ]}>
+            <View style={styles.triangle} />
+
+            <TouchableOpacity style={styles.menuItem}>
+              <MaterialIcons name='settings' size={22} color='#000' />
+              <Text style={styles.menuText}>Setting</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                Alert.alert("Đăng xuất", "Bạn đã đăng xuất!");
+              }}>
+              <MaterialIcons name='delete' size={22} color='#000' />
+              <Text style={styles.menuText}>Delete All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                Alert.alert("Đăng xuất", "Bạn đã đăng xuất!");
+              }}>
+              <MaterialIcons name='add' size={22} color='#000' />
+              <Text style={styles.menuText}>Fields Hike</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  todoItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  deleteButton: {
-    backgroundColor: "red",
-    padding: 8,
-    borderRadius: 4,
-  },
-  deleteButtonText: {
-    color: "white",
-  },
-  editButton: {
-    backgroundColor: "green",
-    padding: 8,
-    borderRadius: 4,
-  },
-  editButtonText: {
-    color: "white",
-  },
-  deleteAllButton: {
-    backgroundColor: "red",
-    padding: 16,
-    borderRadius: 4,
-    alignItems: "center",
-  },
-
-  deleteAllButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  deleteAllButton: {
-    backgroundColor: "red",
-    padding: 16,
-    borderRadius: 4,
-    alignItems: "center",
-  },
-  addButton: {
-    backgroundColor: "green",
-    padding: 16,
-    marginBottom: 10,
-    borderRadius: 4,
-    alignItems: "center",
-  },
-  addButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-});
 
 export default HomeScreen;

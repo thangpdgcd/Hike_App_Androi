@@ -8,7 +8,7 @@ import {
   FlatList,
 } from "react-native";
 import Database from "../Database";
-
+import { MaterialIcons } from "@expo/vector-icons"; // 👈 từ Expo
 const SearchScreen = () => {
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -28,6 +28,7 @@ const SearchScreen = () => {
         onSubmitEditing={handleSearch}
       />
       <Button title='Search' onPress={handleSearch} />
+
       <FlatList
         data={searchResults}
         renderItem={({ item }) => (

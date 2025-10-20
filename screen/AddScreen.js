@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import {
@@ -12,69 +12,73 @@ import {
   Modal,
 } from "react-native";
 import Database from "../Database";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-const Tab = createBottomTabNavigator();
+
 const EntryScreen = ({ navigation }) => {
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState(new Date());
+  const [formattedDate, setFormattedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
   const [parking, setParking] = useState(null);
   const [length, setLength] = useState("");
   const [level, setLevel] = useState("");
   const [description, setDescription] = useState("");
+
+  const [showPicker, setShowPicker] = useState(false);
   const [isConfirmationModalVisible, setConfirmationModalVisible] =
     useState(false);
 
-  const [formattedDate, setFormattedDate] = useState(
-    date.toISOString().split("T")[0]
-  );
+  useEffect(() => {
+    setConfirmationModalVisible(false);
+  }, []);
 
   const handleConfirmAddHike = async () => {
-    // Show the confirmation modal
-    setConfirmationModalVisible(true);
-
-    await Database.addHike(
-      name,
-      location,
-      formattedDate,
-      parking,
-      length,
-      level,
-      description
-    );
-    Alert.alert("Success", "Hike added successfully!");
-    navigation.goBack();
+    try {
+      await Database.addHike(
+        name,
+        location,
+        formattedDate,
+        parking,
+        length,
+        level,
+        description
+      );
+      Alert.alert("Success", "Hike added successfully!");
+      setConfirmationModalVisible(false);
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert("Error", "Failed to add hike: " + error.message);
+    }
   };
 
   const handleCancelAddHike = () => {
-    // Hide the confirmation modal
     setConfirmationModalVisible(false);
     Alert.alert("Canceled", "Hike addition canceled.");
   };
-  useEffect(() => {
-    // Reset confirmation modal visibility when component mounts
-    setConfirmationModalVisible(false);
-  }, []);
-  const handleAddHike = async () => {
+
+  const handleAddHike = () => {
     if (
       !name ||
       !location ||
-      !date ||
+      !formattedDate ||
       !parking ||
       !length ||
       !level ||
       !description
     ) {
-      Alert.alert("Error", "Please enter the fields ");
+      Alert.alert("Error", "Please enter all fields.");
       return;
     }
-    // Display the confirmation modal
     setConfirmationModalVisible(true);
   };
+
   const handleParking = (option) => {
     setParking(option);
   };
+
   const options = ["Yes", "No"];
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.label}>Name of the hike:</Text>
@@ -84,6 +88,7 @@ const EntryScreen = ({ navigation }) => {
         onChangeText={setName}
         placeholder='Enter name'
       />
+
       <Text style={styles.label}>Location:</Text>
       <TextInput
         style={styles.input}
@@ -92,19 +97,37 @@ const EntryScreen = ({ navigation }) => {
         placeholder='Enter location'
         multiline
       />
+
+      {/* ----------- DATE PICKER ----------- */}
       <Text style={styles.label}>Date of the hike:</Text>
-      <DateTimePicker
-        value={date}
-        mode='date'
-        display='spinner'
-        onChange={(event, selectedDate) => {
-          const currentDate = selectedDate || date;
-          setDate(currentDate);
-          setFormattedDate(currentDate.toISOString().split("T")[0]);
-        }}
-      />
+      <TouchableOpacity
+        style={styles.dateButton}
+        onPress={() => setShowPicker(true)}>
+        <Text style={styles.dateButtonText}>Select Date</Text>
+      </TouchableOpacity>
+
       <Text style={styles.label}>Selected Date:</Text>
       <Text style={styles.dateText}>{formattedDate}</Text>
+
+      {showPicker && (
+        <DateTimePicker
+          value={date}
+          mode='date'
+          display='spinner'
+          onChange={(event, selectedDate) => {
+            if (event.type === "dismissed") {
+              setShowPicker(false);
+              return;
+            }
+            const currentDate = selectedDate || date;
+            setShowPicker(false);
+            setDate(currentDate);
+            setFormattedDate(currentDate.toISOString().split("T")[0]);
+          }}
+        />
+      )}
+
+      {/* ----------- PARKING ----------- */}
       <Text style={styles.label}>Parking available:</Text>
       <View style={styles.radioButtonContainer}>
         {options.map((option) => (
@@ -115,10 +138,18 @@ const EntryScreen = ({ navigation }) => {
               parking === option && styles.radioButtonSelected,
             ]}
             onPress={() => handleParking(option)}>
-            <Text>{option}</Text>
+            <Text
+              style={[
+                styles.radioButtonText,
+                parking === option && styles.radioButtonTextSelected,
+              ]}>
+              {option}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* ----------- LENGTH ----------- */}
       <Text style={styles.label}>Length of the hike:</Text>
       <TextInput
         style={styles.input}
@@ -127,18 +158,23 @@ const EntryScreen = ({ navigation }) => {
         placeholder='Enter length'
         multiline
       />
+
+      {/* ----------- LEVEL ----------- */}
       <Text style={styles.label}>Difficulty level:</Text>
       <Picker
         selectedValue={level}
         style={styles.input}
         itemStyle={styles.pickerItem}
-        onValueChange={(itemValue, itemIndex) => setLevel(itemValue)}>
+        onValueChange={(itemValue) => setLevel(itemValue)}>
+        <Picker.Item label='Select level' value='' />
         <Picker.Item label='Beginner' value='beginner' />
         <Picker.Item label='Easy' value='easy' />
         <Picker.Item label='Normal' value='normal' />
         <Picker.Item label='Medium' value='medium' />
         <Picker.Item label='High' value='high' />
       </Picker>
+
+      {/* ----------- DESCRIPTION ----------- */}
       <Text style={styles.label}>Description:</Text>
       <TextInput
         style={styles.input}
@@ -147,11 +183,13 @@ const EntryScreen = ({ navigation }) => {
         placeholder='Enter description'
         multiline
       />
+
+      {/* ----------- ADD BUTTON ----------- */}
       <TouchableOpacity style={styles.addButton} onPress={handleAddHike}>
         <Text style={styles.addButtonText}>Add Hike</Text>
       </TouchableOpacity>
 
-      {/* Confirmation Modal */}
+      {/* ----------- CONFIRMATION MODAL ----------- */}
       <Modal
         animationType='slide'
         transparent={true}
@@ -159,22 +197,22 @@ const EntryScreen = ({ navigation }) => {
         onRequestClose={() => setConfirmationModalVisible(false)}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalText}>Confirm Hike Information</Text>
-            {/* Display confirmed information */}
+            <Text style={styles.modalTitle}>Confirm Hike Information</Text>
+
             <Text>Name: {name}</Text>
             <Text>Location: {location}</Text>
-            <Text>Date: {date.toISOString().split("T")[0]}</Text>
+            <Text>Date: {formattedDate}</Text>
             <Text>Parking: {parking}</Text>
             <Text>Length: {length}</Text>
             <Text>Level: {level}</Text>
             <Text>Description: {description}</Text>
 
-            {/* Add other fields as needed */}
             <TouchableOpacity
               style={[styles.confirmButton, { backgroundColor: "green" }]}
               onPress={handleConfirmAddHike}>
               <Text style={styles.confirmButtonText}>Confirm</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.confirmButton, { backgroundColor: "red" }]}
               onPress={handleCancelAddHike}>
@@ -203,49 +241,73 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 8,
   },
-  addButton: {
-    backgroundColor: "green",
-    padding: 16,
-    borderRadius: 4,
+  dateButton: {
+    backgroundColor: "#007BFF",
+    padding: 10,
+    borderRadius: 6,
     alignItems: "center",
+    marginBottom: 10,
   },
-  addButtonText: {
+  dateButtonText: {
     color: "white",
     fontWeight: "bold",
   },
-  radioContainer: {
+  dateText: {
+    marginBottom: 10,
+  },
+  radioButtonContainer: {
     flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 16,
   },
   radioButton: {
     flex: 1,
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 4,
-    padding: 8,
+    borderRadius: 50,
+    padding: 12,
     marginRight: 8,
     alignItems: "center",
   },
   radioButtonSelected: {
     backgroundColor: "green",
   },
+  radioButtonText: {
+    color: "black",
+  },
+  radioButtonTextSelected: {
+    color: "white",
+  },
   pickerItem: {
     fontSize: 20,
     height: 60,
   },
-  //Add confirmation
+  addButton: {
+    backgroundColor: "#4CAF50",
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  addButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
   },
   modalContent: {
     backgroundColor: "white",
     padding: 20,
     borderRadius: 10,
+    width: "80%",
     alignItems: "center",
   },
-  modalText: {
+  modalTitle: {
     fontWeight: "bold",
     fontSize: 18,
     marginBottom: 20,
@@ -260,44 +322,6 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: "white",
     fontWeight: "bold",
-  },
-
-  addButton: {
-    backgroundColor: "#4CAF50", // Use a color that fits your design
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 20, // Add some bottom margin for spacing
-  },
-  addButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  dateText: {
-    marginBottom: 5,
-  },
-  container: {
-    padding: 16,
-  },
-  label: {
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  radioButtonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between", // Ensure equal spacing between buttons
-  },
-  radioButton: {
-    flex: 1, // Take up equal space
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 50, // Make it circular
-    padding: 12, // Adjust padding for better appearance
-    marginRight: 8, // Add some spacing between buttons
-  },
-  radioButtonSelected: {
-    backgroundColor: "green",
   },
 });
 
