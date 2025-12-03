@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   View,
   Alert,
-  Modal,
   Animated,
   Easing,
-  Pressable,
   Dimensions,
+  Pressable,
+  StyleSheet,
 } from "react-native";
 import styles from "../styles/homestyles.js";
 import Database from "../Database.js";
@@ -20,7 +20,9 @@ const HomeScreen = ({ navigation }) => {
   const [hikeApp, setHikes] = useState([]);
   const [menuVisible, setMenuVisible] = useState(false);
   const [expandedHikeId, setExpandedHikeId] = useState(null);
-  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const [darkMode, setDarkMode] = useState(false);
+
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const isFocused = useIsFocused();
 
@@ -30,19 +32,35 @@ const HomeScreen = ({ navigation }) => {
     navigation.setOptions({
       title: "Home",
       headerLeft: () => (
-        <TouchableOpacity style={{ marginLeft: 16 }} onPress={toggleMenu}>
-          <MaterialIcons name='menu' size={26} color='#000' />
+        <TouchableOpacity
+          style={{ marginLeft: 16 }}
+          onPress={() => setMenuVisible((prev) => !prev)}>
+          <MaterialIcons
+            name='menu'
+            size={26}
+            color={darkMode ? "#fff" : "#000"}
+          />
         </TouchableOpacity>
       ),
       headerRight: () => (
         <TouchableOpacity
           style={{ marginRight: 16 }}
           onPress={() => navigation.navigate("Add Hike")}>
-          <MaterialIcons name='add' size={26} color='#000' />
+          <MaterialIcons
+            name='add'
+            size={26}
+            color={darkMode ? "#fff" : "#000"}
+          />
         </TouchableOpacity>
       ),
+      headerStyle: {
+        backgroundColor: darkMode ? "#020617" : "#fff",
+      },
+      headerTitleStyle: {
+        color: darkMode ? "#fff" : "#000",
+      },
     });
-  }, [navigation]);
+  }, [navigation, darkMode]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -56,22 +74,11 @@ const HomeScreen = ({ navigation }) => {
     fetchData();
   }, [isFocused]);
 
-  const toggleMenu = () => {
+  // Animation cho menu mỗi lần mở
+  useEffect(() => {
     if (menuVisible) {
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 0.9,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 0,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start(() => setMenuVisible(false));
-    } else {
-      setMenuVisible(true);
+      scaleAnim.setValue(0.9);
+      opacityAnim.setValue(0);
       Animated.parallel([
         Animated.spring(scaleAnim, {
           toValue: 1,
@@ -87,7 +94,7 @@ const HomeScreen = ({ navigation }) => {
         }),
       ]).start();
     }
-  };
+  }, [menuVisible]);
 
   const handleDeleteHike = async (id) => {
     Alert.alert(
@@ -107,34 +114,87 @@ const HomeScreen = ({ navigation }) => {
     );
   };
 
+  // ⭐ HÀM XOÁ TẤT CẢ
+  const handleDeleteAllHike = () => {
+    Alert.alert(
+      "Delete all hikes",
+      "Are you sure you want to delete ALL hikes?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "OK",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await Database.deleteAllHike();
+              const data = await Database.getHike(); // lúc này sẽ là []
+              setHikes(data);
+              setMenuVisible(false);
+            } catch (err) {
+              console.log("Error deleting all hikes:", err);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderHikeItem = ({ item }) => {
     const isExpanded = expandedHikeId === item.id;
 
     return (
       <TouchableOpacity
         activeOpacity={0.9}
-        style={styles.card}
+        style={[
+          styles.card,
+          darkMode && { backgroundColor: "#0f172a", borderColor: "#1f2937" },
+        ]}
         onPress={() => setExpandedHikeId(isExpanded ? null : item.id)}>
         <View style={styles.infoContainer}>
-          <Text style={styles.title}>{item.name}</Text>
-          <Text style={styles.label}>
-            <Text style={styles.bold}>Location:</Text> {item.location}
-          </Text>
-          <Text style={styles.label}>
-            <Text style={styles.bold}>Date:</Text> {item.date}
-          </Text>
-          <Text style={styles.label}>
-            <Text style={styles.bold}>Parking:</Text> {item.parking}
+          <Text style={[styles.title, darkMode && { color: "#e5e7eb" }]}>
+            {item.name}
           </Text>
 
-          <Text style={styles.label}>
-            <Text style={styles.bold}>Length:</Text> {item.length}
+          <Text style={[styles.label, darkMode && { color: "#cbd5f5" }]}>
+            <Text style={[styles.bold, darkMode && { color: "#e5e7eb" }]}>
+              Location:
+            </Text>{" "}
+            {item.location}
           </Text>
-          <Text style={styles.label}>
-            <Text style={styles.bold}>Level:</Text> {item.level}
+
+          <Text style={[styles.label, darkMode && { color: "#cbd5f5" }]}>
+            <Text style={[styles.bold, darkMode && { color: "#e5e7eb" }]}>
+              Date:
+            </Text>{" "}
+            {item.date}
           </Text>
-          <Text style={styles.label}>
-            <Text style={styles.bold}>Description:</Text> {item.description}
+
+          <Text style={[styles.label, darkMode && { color: "#cbd5f5" }]}>
+            <Text style={[styles.bold, darkMode && { color: "#e5e7eb" }]}>
+              Parking:
+            </Text>{" "}
+            {item.parking}
+          </Text>
+
+          <Text style={[styles.label, darkMode && { color: "#cbd5f5" }]}>
+            <Text style={[styles.bold, darkMode && { color: "#e5e7eb" }]}>
+              Length:
+            </Text>{" "}
+            {item.length}
+          </Text>
+
+          <Text style={[styles.label, darkMode && { color: "#cbd5f5" }]}>
+            <Text style={[styles.bold, darkMode && { color: "#e5e7eb" }]}>
+              Level:
+            </Text>{" "}
+            {item.level}
+          </Text>
+
+          <Text style={[styles.label, darkMode && { color: "#cbd5f5" }]}>
+            <Text style={[styles.bold, darkMode && { color: "#e5e7eb" }]}>
+              Description:
+            </Text>{" "}
+            {item.description}
           </Text>
 
           <View style={styles.actionContainer}>
@@ -158,7 +218,8 @@ const HomeScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[styles.container, darkMode && { backgroundColor: "#020617" }]}>
       {hikeApp.length > 0 ? (
         <FlatList
           data={hikeApp}
@@ -168,52 +229,90 @@ const HomeScreen = ({ navigation }) => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hikes available</Text>
+          <Text style={[styles.emptyText, darkMode && { color: "#e5e7eb" }]}>
+            No hikes available
+          </Text>
         </View>
       )}
 
-      {/* Menu ngay dưới icon 3 gạch */}
-      <Modal transparent visible={menuVisible} animationType='none'>
-        <Pressable style={styles.overlay} onPressOut={toggleMenu}>
+      {/* Submenu + overlay */}
+      {menuVisible && (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            { zIndex: 20, justifyContent: "flex-start" },
+          ]}>
+          {/* overlay trong suốt, bấm để tắt menu */}
+          <Pressable
+            style={[styles.overlay, { backgroundColor: "transparent" }]}
+            onPress={() => setMenuVisible(false)}
+          />
+
+          {/* dropdown nằm trên overlay */}
           <Animated.View
             style={[
               styles.dropdown,
               {
+                position: "absolute",
+                left: 5,
                 opacity: opacityAnim,
                 transform: [{ scale: scaleAnim }],
-                position: "absolute",
-                top: 55,
-                left: 15,
+                backgroundColor: darkMode ? "#020617" : "#fff",
               },
             ]}>
-            <View style={styles.triangle} />
+            <View
+              style={[
+                styles.triangle,
+                darkMode && { borderBottomColor: "#020617" },
+              ]}
+            />
 
-            <TouchableOpacity style={styles.menuItem}>
-              <MaterialIcons name='settings' size={22} color='#000' />
-              <Text style={styles.menuText}>Setting</Text>
+            {/* Dark Mode toggle */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => setDarkMode((prev) => !prev)}>
+              <MaterialIcons
+                name={darkMode ? "light-mode" : "dark-mode"}
+                size={22}
+                color={darkMode ? "#e5e7eb" : "#000"}
+              />
+              <Text style={[styles.menuText, darkMode && { color: "#e5e7eb" }]}>
+                {darkMode ? "Light Mode" : "Dark Mode"}
+              </Text>
+            </TouchableOpacity>
+
+            {/* ⭐ DÙNG HÀM DELETE ALL THẬT SỰ */}
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={handleDeleteAllHike}>
+              <MaterialIcons
+                name='delete'
+                size={22}
+                color={darkMode ? "#e5e7eb" : "#000"}
+              />
+              <Text style={[styles.menuText, darkMode && { color: "#e5e7eb" }]}>
+                Delete All
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
                 setMenuVisible(false);
-                Alert.alert("Đăng xuất", "Bạn đã đăng xuất!");
+                Alert.alert("Fields Hike", "Function under development.");
               }}>
-              <MaterialIcons name='delete' size={22} color='#000' />
-              <Text style={styles.menuText}>Delete All</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuVisible(false);
-                Alert.alert("Đăng xuất", "Bạn đã đăng xuất!");
-              }}>
-              <MaterialIcons name='add' size={22} color='#000' />
-              <Text style={styles.menuText}>Fields Hike</Text>
+              <MaterialIcons
+                name='add'
+                size={22}
+                color={darkMode ? "#e5e7eb" : "#000"}
+              />
+              <Text style={[styles.menuText, darkMode && { color: "#e5e7eb" }]}>
+                Fields Hike
+              </Text>
             </TouchableOpacity>
           </Animated.View>
-        </Pressable>
-      </Modal>
+        </View>
+      )}
     </View>
   );
 };

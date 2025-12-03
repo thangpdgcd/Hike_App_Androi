@@ -70,8 +70,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.1)",
+    flex: 0,
+    backgroundColor: "transparent",
   },
   dropdown: {
     backgroundColor: "#fff",
